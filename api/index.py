@@ -76,11 +76,14 @@ def home(path):
         tr_saati = datetime.now() + timedelta(hours=3)
 
         # ESP32'yi yormamak için sadece net ve temiz veriyi gönderiyoruz
+      # ESP32'ye gidecek veri kısmı
         return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
-            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
+            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
+            "debug_baslik": sayfa_basligi,  # BU SATIRI GERİ EKLEDİK
+            "debug_kod": response.status_code # BU SATIRI GERİ EKLEDİK
         })
 
     except Exception as e:
