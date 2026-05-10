@@ -15,7 +15,7 @@ def home(path):
     hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
     
     # İsteği doğrudan eczaneye değil, engelleri aşan ScraperAPI'ye gönderiyoruz
-    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}"
+    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true"
 
     try:
         response = requests.get(scraper_api_url, timeout=45)
