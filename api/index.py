@@ -1,9 +1,6 @@
 # --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
 # API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 
-
-
-
 from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
@@ -18,67 +15,54 @@ API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
-    hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
+    # HEDEFİ DEĞİŞTİRDİK! Artık doğrudan açık kaynaklı rehbere gidiyoruz.
+    hedef_url = "https://www.eczaneler.gen.tr/nobetci-canakkale-can"
     
-    # render=true ile Cloudflare'i geçmeye çalışıyoruz
-    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true&country_code=tr&premium=true"
+    # Premium veya render'a gerek yok, bu site çok daha rahat ve hızlı!
+    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}"
 
     try:
-        response = requests.get(scraper_api_url, timeout=45)
+        response = requests.get(scraper_api_url, timeout=30)
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # İŞTE BENİM UNUTTUĞUM DEDEKTİF SATIRI BURADA :)
         sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
-        
-        temiz_metin = soup.get_text(separator=" ", strip=True)
-        temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
-
-        baslik = "ÇAN NÖBETÇİ ECZANELER"
-        baslangic = temiz_metin.find(baslik)
 
         eczane_adi = "Bulunamadı"
         telefon = "Yok"
-        adres = "Adres Bulunamadı"
+        adres = ""
 
-        if baslangic != -1:
-            kalan_metin = temiz_metin[baslangic + len(baslik):]
-            bitis = kalan_metin.find("NÖBETÇİ ECZANELER")
-            
-            if bitis != -1:
-                kesit = kalan_metin[:bitis]
-            else:
-                kesit = kalan_metin[:600]
-
-            # --- VERİ AYIKLAMA ---
-            isim_match = re.search(r'([A-ZİĞÜŞÖÇ\.\s]{3,35}ECZANESİ)', kesit)
-            tarih_match = re.search(r'(\d{2}\.\d{2}\.\d{4})', kesit)
-
-            if isim_match and tarih_match:
-                eczane_adi = isim_match.group(1).strip()
+        # Eczaneler sitesinde telefonlar hep aranabilir (tel:) link formatındadır
+        tel_links = soup.find_all('a', href=re.compile(r'^tel:'))
+        
+        if tel_links:
+            # İlk sıradaki güncel nöbetçidir
+            for tel_link in tel_links:
+                tel_text = tel_link.get_text(strip=True)
                 
-                i_son = isim_match.end()
-                t_bas = tarih_match.start()
+                # Telefon numarasının olduğu tablo satırını veya kutuyu bul
+                container = tel_link.find_parent(['tr', 'div', 'li'])
                 
-                if t_bas > i_son:
-                    karisik_veri = kesit[i_son:t_bas].strip()
+                if container:
+                    metinler = list(container.stripped_strings)
                     
-                    tel_pattern = r'(0?(?:286|5\d{2})\s?\d{3}\s?\d{2}\s?\d{2})'
-                    tel_match = re.search(tel_pattern, karisik_veri)
-                    
-                    if tel_match:
-                        ham_tel = tel_match.group(1)
-                        if len(ham_tel) == 10:
-                            telefon = "0" + ham_tel
-                        else:
-                            telefon = ham_tel.replace(" ", "")
-                        adres_temiz = karisik_veri.replace(ham_tel, "")
-                    else:
-                        adres_temiz = karisik_veri 
-                    
-                    adres_temiz = adres_temiz.replace("Haritada görüntülemek için tıklayınız", "")
-                    adres = adres_temiz.strip()
+                    # İçinde "Eczanesi" geçiyorsa doğru bloğu bulduk demektir
+                    if any("Eczanesi" in m for m in metinler):
+                        # Telefonu sadece rakamlara dönüştür (02864161755 formatı)
+                        telefon = re.sub(r'\D', '', tel_text)
+                        
+                        for m in metinler:
+                            if "Eczanesi" in m and eczane_adi == "Bulunamadı":
+                                eczane_adi = m
+                            elif ("Mah" in m or "Cad" in m or "Sok" in m or "No:" in m) and m not in eczane_adi and m not in tel_text:
+                                adres += m + " "
+                        
+                        adres = adres.replace('»', '').strip()
+                        if not adres:
+                            adres = "Adres Bulunamadı"
+                        
+                        # Doğru veriyi bulduğumuz an döngüyü bitir
+                        break
 
-        # Sunucu saatine 3 saat ekliyoruz (UTC+3 Türkiye Saati)
         tr_saati = datetime.now() + timedelta(hours=3)
 
         return jsonify({
@@ -86,8 +70,7 @@ def home(path):
             "tel": telefon,
             "adres": adres,
             "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi,
-            "debug_kod": response.status_code
+            "debug_baslik": sayfa_basligi
         })
 
     except Exception as e:
@@ -95,3 +78,5 @@ def home(path):
 
 if __name__ == '__main__':
     app.run()
+
+
