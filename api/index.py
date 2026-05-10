@@ -9,19 +9,19 @@ app = Flask(__name__)
 # --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
 API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 
+# Vercel'in 404 hatalarını önleyen Catch-All yapısı
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
     hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
     
-    # İsteği doğrudan eczaneye değil, engelleri aşan ScraperAPI'ye gönderiyoruz
+    # render=true ile Cloudflare'in 10 saniyelik testini sanal tarayıcıda geçiyoruz
     scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true"
 
     try:
         response = requests.get(scraper_api_url, timeout=45)
         
         soup = BeautifulSoup(response.content, 'html.parser')
-        sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
         
         temiz_metin = soup.get_text(separator=" ", strip=True)
         temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
@@ -75,7 +75,8 @@ def home(path):
         # Sunucu saatine 3 saat ekliyoruz (UTC+3 Türkiye Saati)
         tr_saati = datetime.now() + timedelta(hours=3)
 
-       return jsonify({
+        # ESP32'yi yormamak için sadece net ve temiz veriyi gönderiyoruz
+        return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
