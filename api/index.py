@@ -1,3 +1,10 @@
+# --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
+# API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
+
+
+
+if __name__ == '__main__':
+    app.run()
 from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
@@ -9,19 +16,20 @@ app = Flask(__name__)
 # --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
 API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 
-# Vercel'in 404 hatalarını önleyen Catch-All yapısı
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
     hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
     
-    # render=true ile Cloudflare'in 10 saniyelik testini sanal tarayıcıda geçiyoruz
+    # render=true ile Cloudflare'i geçmeye çalışıyoruz
     scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true"
 
     try:
         response = requests.get(scraper_api_url, timeout=45)
-        
         soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # İŞTE BENİM UNUTTUĞUM DEDEKTİF SATIRI BURADA :)
+        sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
         
         temiz_metin = soup.get_text(separator=" ", strip=True)
         temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
@@ -55,7 +63,6 @@ def home(path):
                 if t_bas > i_son:
                     karisik_veri = kesit[i_son:t_bas].strip()
                     
-                    # Telefonu Ayıkla
                     tel_pattern = r'(0?(?:286|5\d{2})\s?\d{3}\s?\d{2}\s?\d{2})'
                     tel_match = re.search(tel_pattern, karisik_veri)
                     
@@ -75,15 +82,13 @@ def home(path):
         # Sunucu saatine 3 saat ekliyoruz (UTC+3 Türkiye Saati)
         tr_saati = datetime.now() + timedelta(hours=3)
 
-        # ESP32'yi yormamak için sadece net ve temiz veriyi gönderiyoruz
-      # ESP32'ye gidecek veri kısmı
         return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
             "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi,  # BU SATIRI GERİ EKLEDİK
-            "debug_kod": response.status_code # BU SATIRI GERİ EKLEDİK
+            "debug_baslik": sayfa_basligi,
+            "debug_kod": response.status_code
         })
 
     except Exception as e:
