@@ -15,18 +15,15 @@ app = Flask(__name__)
 def home(path):
     hedef_url = "https://www.cnnturk.com/nobetci-eczaneler/canakkale/can/"
     
-    # Sistemin gerçek bir bilgisayardan giriyormuş gibi görünmesini sağlayan kimlik
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
     try:
-        # ARACI YOK! Doğrudan Vercel'den CNN Türk'e bağlanıyoruz.
         response = requests.get(hedef_url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.content, 'html.parser')
         
         metin_parcalari = list(soup.stripped_strings)
-        sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
         
         eczane_adi = "Bulunamadı"
         telefon = "Yok"
@@ -61,13 +58,12 @@ def home(path):
 
         tr_saati = datetime.now() + timedelta(hours=3)
 
+        # ESP32 için sadece en hayati 4 veri gönderiliyor
         return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
-            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi,
-            "sistem_durumu": "Aracısız Doğrudan Bağlantı"
+            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
         })
 
     except Exception as e:
