@@ -75,14 +75,12 @@ def home(path):
         # Sunucu saatine 3 saat ekliyoruz (UTC+3 Türkiye Saati)
         tr_saati = datetime.now() + timedelta(hours=3)
 
-        return jsonify({
+       return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
-            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi,
-            "debug_kod": response.status_code
-        })
+            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
+        }))
 
     except Exception as e:
         return jsonify({"hata": str(e)})
