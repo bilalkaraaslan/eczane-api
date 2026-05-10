@@ -80,7 +80,7 @@ def home(path):
             "tel": telefon,
             "adres": adres,
             "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
-        }))
+        })
 
     except Exception as e:
         return jsonify({"hata": str(e)})
