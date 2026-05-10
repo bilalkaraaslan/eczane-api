@@ -1,23 +1,26 @@
 from flask import Flask, jsonify
-from curl_cffi import requests
+import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
+# --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
+API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
-    url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
+    hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
+    
+    # İsteği doğrudan eczaneye değil, engelleri aşan ScraperAPI'ye gönderiyoruz
+    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}"
 
     try:
-        # curl_cffi ile Cloudflare'e karşı tam Chrome tarayıcısı taklidi yapıyoruz
-        response = requests.get(url, impersonate="chrome110", timeout=30)
+        response = requests.get(scraper_api_url, timeout=45)
         
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # --- DEDEKTİF KODU BURADA: Sayfanın başlığını alıyoruz ---
         sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
         
         temiz_metin = soup.get_text(separator=" ", strip=True)
