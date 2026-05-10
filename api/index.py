@@ -22,7 +22,7 @@ def home(path):
     hedef_url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
     
     # render=true ile Cloudflare'i geçmeye çalışıyoruz
-    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true&country_code=tr"
+    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}&render=true&country_code=tr&premium=true"
 
     try:
         response = requests.get(scraper_api_url, timeout=45)
