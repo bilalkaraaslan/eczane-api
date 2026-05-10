@@ -15,53 +15,45 @@ API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
-    # HEDEFİ DEĞİŞTİRDİK! Artık doğrudan açık kaynaklı rehbere gidiyoruz.
     hedef_url = "https://www.eczaneler.gen.tr/nobetci-canakkale-can"
-    
-    # Premium veya render'a gerek yok, bu site çok daha rahat ve hızlı!
     scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}"
 
     try:
         response = requests.get(scraper_api_url, timeout=30)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
         sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
 
+        # Taktik Değişikliği: HTML etiketleri yan yana yapışmasın diye aralarına " | " koyarak tüm metni alıyoruz
+        temiz_metin = soup.get_text(separator=" | ", strip=True)
+        
         eczane_adi = "Bulunamadı"
         telefon = "Yok"
-        adres = ""
+        adres = "Adres Bulunamadı"
 
-        # Eczaneler sitesinde telefonlar hep aranabilir (tel:) link formatındadır
-        tel_links = soup.find_all('a', href=re.compile(r'^tel:'))
+        # "Eczanesi" kelimesini arıyoruz
+        eczane_match = re.search(r'([A-ZİĞÜŞÖÇa-zığüşöç\.\s]{3,35}Eczanesi)', temiz_metin, re.IGNORECASE)
         
-        if tel_links:
-            # İlk sıradaki güncel nöbetçidir
-            for tel_link in tel_links:
-                tel_text = tel_link.get_text(strip=True)
-                
-                # Telefon numarasının olduğu tablo satırını veya kutuyu bul
-                container = tel_link.find_parent(['tr', 'div', 'li'])
-                
-                if container:
-                    metinler = list(container.stripped_strings)
-                    
-                    # İçinde "Eczanesi" geçiyorsa doğru bloğu bulduk demektir
-                    if any("Eczanesi" in m for m in metinler):
-                        # Telefonu sadece rakamlara dönüştür (02864161755 formatı)
-                        telefon = re.sub(r'\D', '', tel_text)
-                        
-                        for m in metinler:
-                            if "Eczanesi" in m and eczane_adi == "Bulunamadı":
-                                eczane_adi = m
-                            elif ("Mah" in m or "Cad" in m or "Sok" in m or "No:" in m) and m not in eczane_adi and m not in tel_text:
-                                adres += m + " "
-                        
-                        adres = adres.replace('»', '').strip()
-                        if not adres:
-                            adres = "Adres Bulunamadı"
-                        
-                        # Doğru veriyi bulduğumuz an döngüyü bitir
-                        break
+        if eczane_match:
+            # İsmi temizleyip büyük harfe çeviriyoruz
+            eczane_adi = eczane_match.group(1).strip().upper()
+            
+            # Eczane adından sonraki 500 karakteri alıyoruz (Adres ve Tel kesinlikle bu aralıkta)
+            kesit = temiz_metin[eczane_match.end():eczane_match.end() + 500]
+            
+            # Telefonu Ayıklama (Örn: 0 (286) 416 17 55 veya 02864161755 vb.)
+            tel_match = re.search(r'(0\s*\(\s*286\s*\)\s*\d{3}\s*\d{2}\s*\d{2}|0?286\s*\d{3}\s*\d{2}\s*\d{2}|0\s*5\d{2}\s*\d{3}\s*\d{2}\s*\d{2})', kesit)
+            if tel_match:
+                ham_tel = tel_match.group(1)
+                telefon = re.sub(r'\D', '', ham_tel) # Sadece rakamları bırak (ESP32 için en iyisi)
+            
+            # Adresi Ayıklama (" | " işaretleriyle böldüğümüz parçalardan adres olanı seçiyoruz)
+            adres_kesit = kesit.split('|')
+            for parca in adres_kesit:
+                parca = parca.strip()
+                # İçinde Mah, Cad, Sokak vb. geçiyorsa adrestir
+                if len(parca) > 15 and any(kelime in parca for kelime in ["Mah", "Cad", "Sok", "Bulvar", "Mevki"]):
+                    adres = parca
+                    break
 
         tr_saati = datetime.now() + timedelta(hours=3)
 
@@ -70,7 +62,8 @@ def home(path):
             "tel": telefon,
             "adres": adres,
             "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi
+            "debug_baslik": sayfa_basligi,
+            "debug_metin": temiz_metin[200:600] # Olası bir aksilikte sitenin bize ne gösterdiğini aynen aktaracak
         })
 
     except Exception as e:
@@ -78,5 +71,3 @@ def home(path):
 
 if __name__ == '__main__':
     app.run()
-
-
