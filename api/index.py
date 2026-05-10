@@ -31,7 +31,8 @@ def home(path):
 
         for i, parca in enumerate(metin_parcalari):
             if "Eczanesi" in parca and eczane_adi == "Bulunamadı":
-                eczane_adi = parca.strip().upper()
+                # DÜZELTME: .upper() komutunu sildik. Artık "İstiklal Eczanesi" formatında gelecek.
+                eczane_adi = parca.strip()
                 
                 for j in range(1, 15):
                     if i + j < len(metin_parcalari):
