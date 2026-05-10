@@ -1,28 +1,24 @@
 from flask import Flask, jsonify
-import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime, timedelta # <-- EKLENDİ: Saat farkı için araç
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def home():
-    # Tarayıcı taklidi yap
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0'
-    }
     url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        # requests yerine cloudscraper kullanarak güvenlik duvarını aşıyoruz
+        scraper = cloudscraper.create_scraper()
+        response = scraper.get(url, timeout=30)
         
-        # HTML temizliği
+        soup = BeautifulSoup(response.content, 'html.parser')
         temiz_metin = soup.get_text(separator=" ", strip=True)
         temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
 
-        # --- ÇAN BÖLGESİ İZOLE ---
         baslik = "ÇAN NÖBETÇİ ECZANELER"
         baslangic = temiz_metin.find(baslik)
 
@@ -69,15 +65,14 @@ def home():
                     adres_temiz = adres_temiz.replace("Haritada görüntülemek için tıklayınız", "")
                     adres = adres_temiz.strip()
 
-        # --- SAAT AYARI ---
-        # Sunucu saatine 3 saat ekliyoruz (UTC+3)
+        # Sunucu saatine 3 saat ekliyoruz (UTC+3 Türkiye Saati)
         tr_saati = datetime.now() + timedelta(hours=3)
 
         return jsonify({
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
-            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M") # <-- GÜNCELLENDİ
+            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
         })
 
     except Exception as e:
