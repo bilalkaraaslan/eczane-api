@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# --- CATCH-ALL ROUTE: Vercel hangi linkten gelirse gelsin bu fonksiyon çalışacak ---
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
@@ -17,10 +16,13 @@ def home(path):
         response = requests.get(url, impersonate="chrome110", timeout=30)
         
         soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # --- DEDEKTİF KODU BURADA: Sayfanın başlığını alıyoruz ---
+        sayfa_basligi = soup.title.string.strip() if soup.title else "Baslik Yok"
+        
         temiz_metin = soup.get_text(separator=" ", strip=True)
         temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
 
-        # --- ÇAN BÖLGESİ İZOLE ---
         baslik = "ÇAN NÖBETÇİ ECZANELER"
         baslangic = temiz_metin.find(baslik)
 
@@ -74,7 +76,9 @@ def home(path):
             "eczane": eczane_adi,
             "tel": telefon,
             "adres": adres,
-            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M")
+            "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
+            "debug_baslik": sayfa_basligi,
+            "debug_kod": response.status_code
         })
 
     except Exception as e:
