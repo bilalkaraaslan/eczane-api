@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-import cloudscraper
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
@@ -11,14 +11,14 @@ def home():
     url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
 
     try:
-        # requests yerine cloudscraper kullanarak güvenlik duvarını aşıyoruz
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, timeout=30)
+        # curl_cffi ile Cloudflare'e karşı tam Chrome tarayıcısı taklidi yapıyoruz
+        response = requests.get(url, impersonate="chrome110", timeout=30)
         
         soup = BeautifulSoup(response.content, 'html.parser')
         temiz_metin = soup.get_text(separator=" ", strip=True)
         temiz_metin = re.sub(r'\s+', ' ', temiz_metin)
 
+        # --- ÇAN BÖLGESİ İZOLE ---
         baslik = "ÇAN NÖBETÇİ ECZANELER"
         baslangic = temiz_metin.find(baslik)
 
