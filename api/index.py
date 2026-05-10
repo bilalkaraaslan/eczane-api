@@ -1,6 +1,7 @@
 # --- BURAYA KENDİ SCRAPER API ANAHTARINI YAPIŞTIR ---
 # API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
 
+
 from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
@@ -9,20 +10,19 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# --- KENDİ SCRAPER API ANAHTARINI BURAYA YAZ ---
-API_KEY = "31a50f9deacbd9b3e570e7a30a6639aa"
-
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def home(path):
-    # HEDEFİ YİNE DEĞİŞTİRDİK: Ağır koruması olmayan haber sitesine gidiyoruz!
     hedef_url = "https://www.cnnturk.com/nobetci-eczaneler/canakkale/can/"
     
-    # DİKKAT: render=true KULLANMIYORUZ! (Sistem artık çok daha hızlı olacak)
-    scraper_api_url = f"http://api.scraperapi.com?api_key={API_KEY}&url={hedef_url}"
+    # Sistemin gerçek bir bilgisayardan giriyormuş gibi görünmesini sağlayan kimlik
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
 
     try:
-        response = requests.get(scraper_api_url, timeout=20)
+        # ARACI YOK! Doğrudan Vercel'den CNN Türk'e bağlanıyoruz.
+        response = requests.get(hedef_url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.content, 'html.parser')
         
         metin_parcalari = list(soup.stripped_strings)
@@ -33,23 +33,25 @@ def home(path):
         adres = "Adres Bulunamadı"
 
         for i, parca in enumerate(metin_parcalari):
-            # Haber sitesindeki eczane ismini buluyoruz
             if "Eczanesi" in parca and eczane_adi == "Bulunamadı":
                 eczane_adi = parca.strip().upper()
                 
-                # Eczane adını bulduktan sonraki 15 kelimeye bakıp Adres ve Telefonu seçiyoruz
                 for j in range(1, 15):
                     if i + j < len(metin_parcalari):
-                        son_parca = metin_parcalari[i+j]
+                        son_parca = metin_parcalari[i+j].strip()
                         
                         # --- ADRES YAKALAMA ---
-                        if ("Adres" in son_parca or "Mah" in son_parca or "Cad" in son_parca) and adres == "Adres Bulunamadı":
-                            # Eğer başında "Adres:" yazıyorsa onu temizleyelim
-                            adres = son_parca.replace("Adres:", "").replace("Adres", "").strip()
+                        if "Adres" in son_parca and adres == "Adres Bulunamadı":
+                            adres_adayi = son_parca.replace("Adres:", "").replace("Adres", "").strip()
                             
+                            if len(adres_adayi) > 3:
+                                adres = adres_adayi
+                            else:
+                                if i + j + 1 < len(metin_parcalari):
+                                    adres = metin_parcalari[i+j+1].strip()
+                                    
                         # --- TELEFON YAKALAMA ---
                         if ("Telefon" in son_parca or "286" in son_parca) and telefon == "Yok":
-                            # Tüm harf ve boşlukları sil, sadece rakamı al
                             tel_rakam = re.sub(r'\D', '', son_parca)
                             if len(tel_rakam) >= 10:
                                 if len(tel_rakam) == 10:
@@ -64,7 +66,8 @@ def home(path):
             "tel": telefon,
             "adres": adres,
             "son_guncelleme": tr_saati.strftime("%d.%m.%Y %H:%M"),
-            "debug_baslik": sayfa_basligi
+            "debug_baslik": sayfa_basligi,
+            "sistem_durumu": "Aracısız Doğrudan Bağlantı"
         })
 
     except Exception as e:
