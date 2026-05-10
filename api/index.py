@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET'])
-def home():
+# --- CATCH-ALL ROUTE: Vercel hangi linkten gelirse gelsin bu fonksiyon çalışacak ---
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def home(path):
     url = "https://www.canakkaleeo.org.tr/nobetci-eczaneler"
 
     try:
