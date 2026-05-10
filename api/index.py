@@ -3,8 +3,7 @@
 
 
 
-if __name__ == '__main__':
-    app.run()
+
 from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
